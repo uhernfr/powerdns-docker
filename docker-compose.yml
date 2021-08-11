@@ -1,0 +1,58 @@
+pdns:
+  #build: pdns
+  image: interlegis/powerdns:4.4.0
+  links:
+    - "mysql:mysql"
+  ports:
+    - "53:53"
+    - "53:53/udp"
+    - "8088:8081"
+  environment:
+    - PDNSCONF_API_KEY=a_strong_api_key
+    - PDNSCONF_DNSUPDATE=yes
+    - SECALLZONES_CRONJOB=yes
+
+mysql:
+  image: bitnami/mariadb:10.1.14-r3
+  environment:
+    - MARIADB_ROOT_PASSWORD=mysqlrootpw
+    - MARIADB_REPLICATION_MODE=master
+    - MARIADB_REPLICATION_USER=repl_user
+    - MARIADB_REPLICATION_PASSWORD=repl_password
+    - MARIADB_DATABASE=pdns 
+    - MARIADB_USER=pdns
+    - MARIADB_PASSWORD=pdnspw
+  volumes:
+    - dnsmasterdb:/bitnami/mariadb
+  ports:
+    - 3306:3306
+
+pdns-mysql:
+  image: mysql:5.6
+  container_name: pdns-mysql
+  restart: always
+  environment:
+    - MYSQL_ROOT_HOST=%
+    - MYSQL_ROOT_PASSWORD=Safe4root123
+    - MYSQL_DATABASE=pdns-admin
+    - MYSQL_USER=pdns
+    - MYSQL_PASSWORD=pdnspass
+  volumes:
+    - $PWD/mysql-data:/var/lib/mysql
+
+powerdns-admin:
+  image: ngoduykhanh/powerdns-admin:latest
+  ports:
+    - "9393:8000"
+  links:
+    - pdns-mysql
+    - pdns
+  environment:
+    - SECRET_KEY=admin
+    - BIND_ADDRESS=0.0.0.0
+    - PORT=8000
+    - SQLALCHEMY_DATABASE_URI=mysql://pdns:pdnspass@pdns-mysql/pdns-admin
+    - GUINCORN_TIMEOUT=60
+    - GUNICORN_WORKERS=2
+    - GUNICORN_LOGLEVEL=DEBUG
+    #- =eqjkwleuiy8yhhdhjasjdkakji9uy
